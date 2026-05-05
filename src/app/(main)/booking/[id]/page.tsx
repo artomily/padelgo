@@ -3,34 +3,28 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Clock, XCircle, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { formatCurrency, formatTime } from "@/lib/utils";
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Calendar, Download } from "lucide-react";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { BookingWithCourt } from "@/types";
 
 const statusConfig = {
-  pending: { icon: Clock, label: "Pending", variant: "secondary" as const, color: "text-yellow-600", bg: "bg-yellow-100" },
-  confirmed: { icon: CheckCircle2, label: "Confirmed", variant: "default" as const, color: "text-green-600", bg: "bg-green-100" },
-  cancelled: { icon: XCircle, label: "Cancelled", variant: "destructive" as const, color: "text-red-600", bg: "bg-red-100" },
+  pending: { icon: Clock, label: "Menunggu Konfirmasi", color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/20" },
+  confirmed: { icon: CheckCircle2, label: "Dikonfirmasi", color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
+  cancelled: { icon: XCircle, label: "Dibatalkan", color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20" },
 };
 
-export default function BookingViewPage() {
+export default function BookingStatusPage() {
   const params = useParams();
   const router = useRouter();
   const [booking, setBooking] = useState<BookingWithCourt | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     async function fetchBooking() {
       try {
         const res = await fetch(`/api/bookings/${params.id}`);
         if (!res.ok) throw new Error("Not found");
-        const data = await res.json();
-        setBooking(data);
+        setBooking(await res.json());
       } catch {
         router.push("/book");
       } finally {
@@ -40,42 +34,46 @@ export default function BookingViewPage() {
     fetchBooking();
   }, [params.id, router]);
 
-  async function handleCancel() {
+  function generateICS() {
     if (!booking) return;
-    setCancelling(true);
-    try {
-      const res = await fetch(`/api/bookings/${booking.id}/cancel`, {
-        method: "POST",
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setBooking(updated);
-      } else {
-        const data = await res.json();
-        alert(data.error || "Cannot cancel this booking");
-      }
-    } catch {
-      alert("Failed to cancel booking");
-    } finally {
-      setCancelling(false);
-    }
+    const start = booking.startTime.replace(":", "");
+    const end = String(parseInt(booking.startTime.split(":")[0]) + 1).padStart(2, "0") + "0000";
+    const date = booking.date.replace(/-/g, "");
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:${date}T${start}00
+DTEND:${date}T${end}00
+SUMMARY:PadelGo - ${booking.court.name}
+DESCRIPTION:Booking ${booking.bookingCode}
+LOCATION:PadelGo
+END:VEVENT
+END:VCALENDAR`;
+    const blob = new Blob([ics], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `padelgo-${booking.bookingCode}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-muted-foreground">Loading booking...</p>
+      <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-16 text-center">
+        <div className="animate-pulse space-y-4 max-w-md mx-auto">
+          <div className="h-16 w-16 rounded-2xl bg-muted mx-auto" />
+          <div className="h-6 w-48 bg-muted rounded mx-auto" />
+        </div>
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-muted-foreground">Booking not found.</p>
-        <Link href="/book">
-          <Button className="mt-4">Book a Court</Button>
-        </Link>
+      <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-16 text-center">
+        <p className="text-muted-foreground mb-4">Booking not found.</p>
+        <Link href="/book"><button className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]">Book a Court</button></Link>
       </div>
     );
   }
@@ -83,82 +81,52 @@ export default function BookingViewPage() {
   const status = statusConfig[booking.status];
   const StatusIcon = status.icon;
 
-  const bookingDate = new Date(`${booking.booking_date}T${booking.start_time}`);
-  const now = new Date();
-  const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-  const canCancel = booking.status !== "cancelled" && hoursUntilBooking > 48;
-
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Link href="/book" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="mr-1 h-4 w-4" /> Back to Booking
+    <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-12 md:py-16">
+      <Link href="/book" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
+        <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to Booking
       </Link>
 
-      <div className="text-center mb-8">
-        <div className={`inline-flex h-16 w-16 items-center justify-center rounded-full ${status.bg} mb-4`}>
-          <StatusIcon className={`h-8 w-8 ${status.color}`} />
+      <div className="max-w-lg mx-auto">
+        <div className="text-center mb-8">
+          <div className={cn("inline-flex h-16 w-16 items-center justify-center rounded-2xl", status.bg, status.border, "border")}>
+            <StatusIcon className={cn("h-8 w-8", status.color)} />
+          </div>
+          <h1 className="text-2xl font-heading font-bold tracking-tight mt-4">Booking {status.label}</h1>
         </div>
-        <h1 className="text-2xl font-bold">Booking {status.label}</h1>
-        <Badge variant={status.variant} className="mt-2">{status.label}</Badge>
+
+        <div className="rounded-2xl bg-card border border-border/50 p-6 mb-6">
+          <div className="space-y-3 text-sm">
+            {[
+              ["Booking Code", <span key="code" className="font-mono font-semibold text-primary">{booking.bookingCode}</span>],
+              ["Court", booking.court.name],
+              ["Date", formatDate(new Date(booking.date + "T00:00:00"))],
+              ["Time", `${booking.startTime} - ${String(parseInt(booking.startTime.split(":")[0]) + booking.durationHours).padStart(2, "0")}:00`],
+              ["Duration", `${booking.durationHours}h`],
+              ["Name", booking.customerName],
+              ["Phone", booking.customerPhone],
+              ["Email", booking.customerEmail],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="flex justify-between">
+                <span className="text-muted-foreground">{label}</span>
+                {value}
+              </div>
+            ))}
+            <div className="border-t border-border/50 pt-3 flex justify-between">
+              <span className="font-semibold">Total</span>
+              <span className="text-xl font-heading font-bold text-primary">{formatCurrency(booking.totalPrice)}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={generateICS}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-border/50 bg-transparent px-6 py-2.5 text-sm font-semibold transition-all hover:bg-muted active:scale-[0.98]"
+        >
+          <Calendar className="h-4 w-4" />
+          Add to Calendar
+        </button>
       </div>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Booking Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <span className="text-muted-foreground">Booking ID:</span>
-            <span className="font-mono text-xs">{booking.id}</span>
-            <span className="text-muted-foreground">Court:</span>
-            <span className="font-medium">{booking.court.name}</span>
-            <span className="text-muted-foreground">Date:</span>
-            <span>{new Date(booking.booking_date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
-            <span className="text-muted-foreground">Time:</span>
-            <span>{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-            <span className="text-muted-foreground">Name:</span>
-            <span>{booking.customer_name}</span>
-            <span className="text-muted-foreground">Email:</span>
-            <span>{booking.customer_email}</span>
-            {booking.customer_phone && (
-              <>
-                <span className="text-muted-foreground">Phone:</span>
-                <span>{booking.customer_phone}</span>
-              </>
-            )}
-          </div>
-          <Separator className="my-4" />
-          <div className="flex justify-between items-center">
-            <span className="font-semibold">Total</span>
-            <span className="text-xl font-bold">{formatCurrency(booking.total_price)}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {booking.status === "pending" && (
-        <Card className="mb-6 border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">Payment Pending</CardTitle>
-          </CardHeader>
-          <CardContent className="text-yellow-900 text-sm">
-            <p>Your booking is awaiting payment verification. You will receive an email confirmation once payment is verified.</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {canCancel && (
-        <div className="flex justify-center">
-          <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
-            {cancelling ? "Cancelling..." : "Cancel Booking"}
-          </Button>
-        </div>
-      )}
-
-      {!canCancel && booking.status !== "cancelled" && (
-        <p className="text-center text-sm text-muted-foreground">
-          Cancellation is only available up to 48 hours before the booking time.
-        </p>
-      )}
     </div>
   );
 }

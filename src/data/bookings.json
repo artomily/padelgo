@@ -1,0 +1,74 @@
+[
+  {
+    "id": "booking-001",
+    "bookingCode": "PG-20250506-7823",
+    "courtId": "court-1",
+    "date": "2025-05-06",
+    "startTime": "09:00",
+    "durationHours": 1,
+    "customerName": "Andi Wijaya",
+    "customerPhone": "+62812345678",
+    "customerEmail": "andi@email.com",
+    "totalPrice": 150000,
+    "status": "confirmed",
+    "createdAt": "2025-05-04T10:00:00Z",
+    "court": {
+      "id": "court-1",
+      "name": "Court 1",
+      "type": "indoor",
+      "pricePerHour": 150000,
+      "amenities": ["LED Lighting", "Climate Control", "Pro Surface"],
+      "isActive": true,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "id": "booking-002",
+    "bookingCode": "PG-20250507-4512",
+    "courtId": "court-2",
+    "date": "2025-05-07",
+    "startTime": "18:00",
+    "durationHours": 1,
+    "customerName": "Sari Dewi",
+    "customerPhone": "+62812345679",
+    "customerEmail": "sari@email.com",
+    "totalPrice": 120000,
+    "status": "pending",
+    "createdAt": "2025-05-04T11:00:00Z",
+    "court": {
+      "id": "court-2",
+      "name": "Court 2",
+      "type": "indoor",
+      "pricePerHour": 120000,
+      "amenities": ["LED Lighting", "Pro Surface"],
+      "isActive": true,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "id": "booking-003",
+    "bookingCode": "PG-20250505-9187",
+    "courtId": "court-3",
+    "date": "2025-05-05",
+    "startTime": "16:00",
+    "durationHours": 1,
+    "customerName": "Budi Santoso",
+    "customerPhone": "+62812345680",
+    "customerEmail": "budi@email.com",
+    "totalPrice": 80000,
+    "status": "cancelled",
+    "createdAt": "2025-05-03T09:00:00Z",
+    "court": {
+      "id": "court-3",
+      "name": "Court 3",
+      "type": "outdoor",
+      "pricePerHour": 80000,
+      "amenities": ["Natural Light", "Synthetic Grass"],
+      "isActive": true,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    }
+  }
+]

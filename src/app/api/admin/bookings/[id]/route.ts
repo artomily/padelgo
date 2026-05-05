@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { confirmBooking, adminCancelBooking, getBookingById } from "@/lib/actions";
+import { getBookingById } from "@/lib/data";
 
 function verifyAdmin(request: Request) {
   const cookie = request.headers.get("cookie") || "";
@@ -16,7 +16,10 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const booking = await getBookingById(id);
+    const booking = getBookingById(id);
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
     return NextResponse.json(booking);
   } catch (error) {
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });

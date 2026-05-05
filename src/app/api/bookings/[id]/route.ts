@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { getBookingById } from "@/lib/actions";
+import { getBookingById } from "@/lib/data";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const booking = await getBookingById(id);
-    if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    }
+    const booking = getBookingById(id);
+    if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     return NextResponse.json(booking);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
   }
 }

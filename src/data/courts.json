@@ -1,0 +1,32 @@
+[
+  {
+    "id": "court-1",
+    "name": "Court 1",
+    "type": "indoor",
+    "pricePerHour": 150000,
+    "amenities": ["LED Lighting", "Climate Control", "Pro Surface"],
+    "isActive": true,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "id": "court-2",
+    "name": "Court 2",
+    "type": "indoor",
+    "pricePerHour": 120000,
+    "amenities": ["LED Lighting", "Pro Surface"],
+    "isActive": true,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "id": "court-3",
+    "name": "Court 3",
+    "type": "outdoor",
+    "pricePerHour": 80000,
+    "amenities": ["Natural Light", "Synthetic Grass"],
+    "isActive": true,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  }
+]

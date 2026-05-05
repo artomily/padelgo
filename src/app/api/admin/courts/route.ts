@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createCourt } from "@/lib/actions";
+import { createCourt } from "@/lib/data";
 
 function verifyAdmin(request: Request) {
   const cookie = request.headers.get("cookie") || "";
@@ -7,19 +7,11 @@ function verifyAdmin(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  if (!verifyAdmin(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const court = await createCourt({
-      name: body.name,
-      description: body.description,
-      price_per_hour: body.price_per_hour,
-    });
-    return NextResponse.json(court, { status: 201 });
-  } catch (error) {
+    return NextResponse.json(createCourt({ name: body.name, type: body.type || "indoor", pricePerHour: body.pricePerHour }), { status: 201 });
+  } catch {
     return NextResponse.json({ error: "Failed to create court" }, { status: 500 });
   }
 }

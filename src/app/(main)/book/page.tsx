@@ -2,35 +2,30 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { formatCurrency, formatTime } from "@/lib/utils";
-import type { Court, TimeSlot, AppSettings } from "@/types";
+import { format, addDays } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { ArrowLeft, ArrowRight, Loader2, Check, Copy, MapPin, Clock, User, Mail, Phone, FileText } from "lucide-react";
+import { cn, formatCurrency, formatDate, formatDateISO, getDayName, getDayNumber } from "@/lib/utils";
+import type { Court, TimeSlot, BookingWithCourt } from "@/types";
 
 export default function BookPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [date, setDate] = useState<Date>();
-  const [selectedCourt, setSelectedCourt] = useState<string>("");
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [courts, setCourts] = useState<Court[]>([]);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [selectedCourt, setSelectedCourt] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(formatDateISO(new Date()));
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [duration, setDuration] = useState(1);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [bookingResult, setBookingResult] = useState<BookingWithCourt | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
     customerName: "",
-    customerEmail: "",
     customerPhone: "",
-    notes: "",
+    customerEmail: "",
   });
 
   useEffect(() => {
@@ -38,40 +33,31 @@ export default function BookPage() {
       const res = await fetch("/api/courts");
       const data = await res.json();
       setCourts(data);
-      const settingsRes = await fetch("/api/settings");
-      setSettings(await settingsRes.json());
     }
     init();
   }, []);
 
   useEffect(() => {
-    if (!date) return;
+    if (!selectedDate) return;
     async function fetchSlots() {
       setLoading(true);
-      const dateStr = format(date!, "yyyy-MM-dd");
-      const res = await fetch(`/api/slots?date=${dateStr}`);
+      const res = await fetch(`/api/slots?date=${selectedDate}${selectedCourt ? `&courtId=${selectedCourt}` : ""}`);
       const data = await res.json();
       setSlots(data);
       setLoading(false);
     }
     fetchSlots();
-  }, [date]);
+  }, [selectedDate, selectedCourt]);
 
-  const availableSlots = slots.filter(
-    (s) => s.available && (!selectedCourt || s.courtId === selectedCourt)
-  );
+  const availableSlots = slots.filter((s) => s.available);
+  const bookedSlots = slots.filter((s) => !s.available);
 
-  const selectedSlotData = slots.find(
-    (s) =>
-      s.time === selectedSlot &&
-      s.courtId === (selectedCourt || slots.find((sl) => sl.time === selectedSlot)?.courtId)
-  );
+  const next7Days = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
 
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + (settings ? parseInt(settings.max_advance_days) : 30));
+  const selectedCourtData = courts.find((c) => c.id === selectedCourt);
 
   async function handleSubmit() {
-    if (!date || !selectedSlot || !selectedCourt) return;
+    if (!selectedCourt || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/bookings", {
@@ -79,275 +65,377 @@ export default function BookPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courtId: selectedCourt,
-          date: format(date!, "yyyy-MM-dd"),
-          startTime: selectedSlot,
+          date: selectedDate,
+          startTime: selectedTime,
+          durationHours: duration,
           customerName: formData.customerName,
-          customerEmail: formData.customerEmail,
           customerPhone: formData.customerPhone,
-          notes: formData.notes,
+          customerEmail: formData.customerEmail,
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        router.push(`/book/${data.id}/confirmation`);
+        setBookingResult(data);
+        setStep(3);
       }
     } finally {
       setSubmitting(false);
     }
   }
 
+  function copyBookingCode() {
+    if (bookingResult) {
+      navigator.clipboard.writeText(bookingResult.bookingCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  if (step === 3 && bookingResult) {
+    return (
+      <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-12 md:py-16">
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+              <Check className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-heading font-bold tracking-tight">Booking Berhasil!</h1>
+            <p className="text-muted-foreground mt-2">Menunggu verifikasi pembayaran.</p>
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border/50 p-6 mb-6">
+            <div className="space-y-3 text-sm">
+              {[
+                ["Booking Code", (
+                  <span key="code" className="flex items-center gap-1">
+                    <span className="font-mono font-semibold text-primary">{bookingResult.bookingCode}</span>
+                    <button onClick={copyBookingCode} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Copy">
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    {copied && <span className="text-xs text-primary ml-1">Copied!</span>}
+                  </span>
+                )],
+                ["Court", bookingResult.court.name],
+                ["Date", formatDate(new Date(bookingResult.date + "T00:00:00"))],
+                ["Time", `${bookingResult.startTime} - ${String(parseInt(bookingResult.startTime.split(":")[0]) + duration).padStart(2, "0")}:00`],
+                ["Name", bookingResult.customerName],
+                ["Email", bookingResult.customerEmail],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between">
+                  <span className="text-muted-foreground">{label}</span>
+                  {value}
+                </div>
+              ))}
+              <div className="border-t border-border/50 pt-3 flex justify-between">
+                <span className="font-semibold">Total</span>
+                <span className="text-xl font-heading font-bold text-primary">{formatCurrency(bookingResult.totalPrice)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border/50 p-6 mb-6">
+            <h3 className="font-heading font-semibold mb-3">Payment Instructions</h3>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+              <li>Scan QRIS code or transfer to the account below</li>
+              <li>Pay: <strong className="text-foreground">{formatCurrency(bookingResult.totalPrice)}</strong></li>
+              <li>Include booking code: <strong className="text-foreground">{bookingResult.bookingCode}</strong></li>
+              <li>Wait for admin verification</li>
+              <li>You'll receive email confirmation</li>
+            </ol>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => router.push(`/booking/${bookingResult.id}`)} className="flex-1 inline-flex items-center justify-center rounded-full border border-border/50 bg-transparent px-6 py-2.5 text-sm font-semibold transition-all hover:bg-muted active:scale-[0.98]">
+              View Booking
+            </button>
+            <button onClick={() => { setStep(1); setBookingResult(null); setSelectedCourt(""); setSelectedTime(""); }} className="flex-1 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold transition-all hover:bg-primary/90 active:scale-[0.98]">
+              Book Another
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-12 md:py-16">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Book a Court</h1>
+        <button onClick={() => step > 1 ? setStep(step - 1) : router.push("/")} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          {step === 1 ? "Back to Home" : "Back"}
+        </button>
+        <h1 className="text-2xl md:text-3xl font-heading font-bold tracking-tight">
+          {step === 1 ? "Book a Court" : "Your Details"}
+        </h1>
         <p className="text-muted-foreground mt-1">
-          Select your date, court, and time slot to make a booking.
+          {step === 1 ? "Select your court, date, and time." : "Fill in your information to confirm booking."}
         </p>
       </div>
 
-      <div className="flex gap-2 mb-8">
-        {[1, 2, 3].map((s) => (
-          <div
-            key={s}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
-              step >= s
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {s}
-          </div>
-        ))}
-      </div>
-
       {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Date</CardTitle>
-            <CardDescription>Choose the date you want to play</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal mb-4",
-                !date && "text-muted-foreground"
-              )}
-              onClick={() => setShowCalendar(!showCalendar)}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, "PPP") : "Pick a date"}
-            </Button>
-            {showCalendar && (
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => {
-                  if (d) {
-                    setDate(d);
-                    setShowCalendar(false);
-                  }
-                }}
-                disabled={(d) =>
-                  d < new Date(new Date().setHours(0, 0, 0, 0)) || d > maxDate
-                }
-                initialFocus
-              />
-            )}
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!date}>
-                Next
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Court & Time</CardTitle>
-            <CardDescription>
-              {date && `Available slots for ${format(date, "PPP")}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <Label className="mb-2 block">Court</Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={selectedCourt === "" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCourt("")}
-                >
-                  All Courts
-                </Button>
-                {courts.map((court) => (
-                  <Button
-                    key={court.id}
-                    variant={selectedCourt === court.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCourt(court.id);
-                      setSelectedSlot("");
-                    }}
-                  >
-                    {court.name} - {formatCurrency(court.price_per_hour)}/hr
-                  </Button>
-                ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Date Strip */}
+            <div>
+              <h2 className="font-heading font-semibold mb-4">Select Date</h2>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {next7Days.map((day, i) => {
+                  const dateStr = formatDateISO(day);
+                  const isActive = selectedDate === dateStr;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => { setSelectedDate(dateStr); setSelectedTime(""); }}
+                      className={cn(
+                        "flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl border transition-all",
+                        isActive
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "bg-card border-border/50 text-muted-foreground hover:border-primary/30"
+                      )}
+                    >
+                      <span className="text-xs font-medium">{getDayName(day)}</span>
+                      <span className="text-xl font-heading font-bold">{getDayNumber(day)}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            ) : availableSlots.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">
-                No available slots for this date. Please try another date.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {availableSlots.map((slot) => (
+            {/* Duration */}
+            <div>
+              <h2 className="font-heading font-semibold mb-4">Duration</h2>
+              <div className="flex gap-2">
+                {[1, 1.5, 2].map((d) => (
                   <button
-                    key={`${slot.courtId}-${slot.time}`}
-                    onClick={() => {
-                      setSelectedSlot(slot.time);
-                      if (!selectedCourt) setSelectedCourt(slot.courtId);
-                    }}
+                    key={d}
+                    onClick={() => setDuration(d)}
                     className={cn(
-                      "flex flex-col items-center rounded-lg border p-3 transition-colors hover:bg-accent",
-                      selectedSlot === slot.time && selectedCourt === slot.courtId
-                        ? "border-primary bg-primary/10"
-                        : "border-border"
+                      "px-5 py-2 rounded-full text-sm font-medium transition-all",
+                      duration === d
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card border border-border/50 text-muted-foreground hover:border-primary/30"
                     )}
                   >
-                    <span className="text-sm font-medium">
-                      {formatTime(slot.time)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatTime(slot.endTime)}
-                    </span>
-                    {!selectedCourt && (
-                      <span className="text-xs text-muted-foreground mt-1">
-                        {slot.courtName}
-                      </span>
-                    )}
+                    {d}h
                   </button>
                 ))}
               </div>
-            )}
-
-            <div className="mt-6 flex justify-between">
-              <Button variant="outline" onClick={() => setStep(1)}>
-                Back
-              </Button>
-              <Button
-                onClick={() => setStep(3)}
-                disabled={!selectedSlot || !selectedCourt}
-              >
-                Next
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Court Selection */}
+            <div>
+              <h2 className="font-heading font-semibold mb-4">Select Court</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {courts.map((court) => (
+                  <button
+                    key={court.id}
+                    onClick={() => { setSelectedCourt(court.id); setSelectedTime(""); }}
+                    className={cn(
+                      "p-4 rounded-2xl border text-left transition-all",
+                      selectedCourt === court.id
+                        ? "bg-primary/10 border-primary/50"
+                        : "bg-card border-border/50 hover:border-primary/30"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-heading font-semibold">{court.name}</h3>
+                      <span className={cn("text-sm font-semibold", selectedCourt === court.id ? "text-primary" : "text-muted-foreground")}>
+                        {formatCurrency(court.pricePerHour)}/hr
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground capitalize">{court.type}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Slots */}
+            <div>
+              <h2 className="font-heading font-semibold mb-4">Available Time</h2>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  {slots.map((slot) => (
+                    <button
+                      key={`${slot.courtId}-${slot.time}`}
+                      onClick={() => {
+                        if (!slot.available) return;
+                        setSelectedTime(slot.time);
+                        if (!selectedCourt) setSelectedCourt(slot.courtId);
+                      }}
+                      disabled={!slot.available}
+                      className={cn(
+                        "py-2.5 rounded-xl text-sm font-medium transition-all",
+                        slot.available
+                          ? selectedTime === slot.time && selectedCourt === slot.courtId
+                            ? "bg-primary/10 border border-primary/50 text-primary"
+                            : "bg-card border border-border/50 text-muted-foreground hover:border-primary/30"
+                          : "opacity-25 line-through cursor-not-allowed text-muted-foreground"
+                      )}
+                    >
+                      {slot.time}
+                      {!slot.available && selectedCourt === slot.courtId && (
+                        <span className="block text-[10px]">Booked</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 rounded-2xl bg-card border border-border/50 p-6">
+              <h3 className="font-heading font-semibold mb-4">Booking Summary</h3>
+              {selectedCourtData ? (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Court</span>
+                    <span className="font-medium">{selectedCourtData.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-medium">{selectedDate ? formatDate(new Date(selectedDate + "T00:00:00")) : "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-medium">{selectedTime || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-medium">{duration}h</span>
+                  </div>
+                  <div className="border-t border-border/50 pt-3 flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-heading font-bold text-primary">
+                      {selectedTime ? formatCurrency(selectedCourtData.pricePerHour * duration) : "-"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Select a court to see details.</p>
+              )}
+              <button
+                onClick={() => selectedCourt && selectedDate && selectedTime ? setStep(2) : null}
+                disabled={!selectedCourt || !selectedDate || !selectedTime}
+                className={cn(
+                  "w-full mt-6 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                  selectedCourt && selectedDate && selectedTime
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                )}
+              >
+                Lanjut ke Data Diri
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {step === 3 && selectedSlotData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Details</CardTitle>
-            <CardDescription>Review your booking and enter your information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg bg-muted/50 p-4 mb-6">
-              <h3 className="font-semibold mb-2">Booking Summary</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-muted-foreground">Court:</span>
-                <span>{selectedSlotData.courtName}</span>
-                <span className="text-muted-foreground">Date:</span>
-                <span>{date && format(date, "PPP")}</span>
-                <span className="text-muted-foreground">Time:</span>
-                <span>
-                  {formatTime(selectedSlotData.time)} - {formatTime(selectedSlotData.endTime)}
-                </span>
-                <span className="text-muted-foreground">Price:</span>
-                <span className="font-semibold">{formatCurrency(selectedSlotData.price)}</span>
+      {step === 2 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="rounded-2xl bg-card border border-border/50 p-6">
+              <h2 className="font-heading font-semibold mb-6">Your Information</h2>
+              <div className="grid gap-5">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Full Name *</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <input
+                      value={formData.customerName}
+                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      placeholder="Your full name"
+                      className="w-full h-11 rounded-xl bg-background border border-border/50 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Phone *</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <input
+                      value={formData.customerPhone}
+                      onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+                      placeholder="+62 812-3456-7890"
+                      className="w-full h-11 rounded-xl bg-background border border-border/50 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Email *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <input
+                      type="email"
+                      value={formData.customerEmail}
+                      onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+                      placeholder="email@example.com"
+                      className="w-full h-11 rounded-xl bg-background border border-border/50 pl-10 pr-4 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8 flex justify-between">
+                <button onClick={() => setStep(1)} className="inline-flex items-center justify-center rounded-full border border-border/50 bg-transparent px-6 py-2.5 text-sm font-semibold transition-all hover:bg-muted active:scale-[0.98]">
+                  <ArrowLeft className="mr-1.5 h-4 w-4" />
+                  Back
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || !formData.customerName || !formData.customerPhone || !formData.customerEmail}
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold transition-all active:scale-[0.98]",
+                    formData.customerName && formData.customerPhone && formData.customerEmail
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
+                  )}
+                >
+                  {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : "Confirm Booking"}
+                </button>
               </div>
             </div>
+          </div>
 
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.customerName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerName: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.customerEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerEmail: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone (optional)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.customerPhone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerPhone: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="notes">Notes (optional)</Label>
-                <Input
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                />
-              </div>
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 rounded-2xl bg-card border border-border/50 p-6">
+              <h3 className="font-heading font-semibold mb-4">Booking Summary</h3>
+              {selectedCourtData && (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Court</span>
+                    <span className="font-medium">{selectedCourtData.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-medium">{formatDate(new Date(selectedDate + "T00:00:00"))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-medium">{selectedTime}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-medium">{duration}h</span>
+                  </div>
+                  <div className="border-t border-border/50 pt-3 flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-heading font-bold text-primary">{formatCurrency(selectedCourtData.pricePerHour * duration)}</span>
+                  </div>
+                </div>
+              )}
             </div>
-
-            <div className="mt-6 flex justify-between">
-              <Button variant="outline" onClick={() => setStep(2)}>
-                Back
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  submitting ||
-                  !formData.customerName ||
-                  !formData.customerEmail
-                }
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Booking...
-                  </>
-                ) : (
-                  "Confirm Booking"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
