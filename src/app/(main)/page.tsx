@@ -55,10 +55,10 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="relative overflow-hidden py-20 md:py-28 lg:py-36">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-20 right-0 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent" />
+        <div className="absolute top-20 right-0 w-150 h-150 rounded-full bg-primary/5 blur-[120px]" />
 
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10 relative">
+        <div className="mx-auto max-w-7xl px-6 md:px-10 relative">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-card/50 backdrop-blur-sm px-4 py-1.5 text-xs font-medium text-muted-foreground mb-6">
               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -97,7 +97,7 @@ export default function HomePage() {
 
       {/* Stats Bar */}
       <section className="border-y border-border/50 bg-card/50">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-6">
+        <div className="mx-auto max-w-7xl px-6 md:px-10 py-6">
           <div className="grid grid-cols-3 gap-6">
             <div className="text-center">
               <p className="text-2xl font-heading font-bold text-primary">{courtsData.length}</p>
@@ -117,7 +117,7 @@ export default function HomePage() {
 
       {/* Features */}
       <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {features.map((feature, i) => {
               const Icon = feature.icon;
@@ -141,7 +141,7 @@ export default function HomePage() {
 
       {/* About */}
       <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">About PadelGo</p>
@@ -173,7 +173,7 @@ export default function HomePage() {
                 })}
               </div>
             </div>
-            <div className="aspect-[4/3] rounded-3xl bg-card border border-border/50 flex items-center justify-center">
+            <div className="aspect-4/3 rounded-3xl bg-card border border-border/50 flex items-center justify-center">
               <div className="text-center p-8">
                 <Users className="h-20 w-20 text-primary/40 mx-auto mb-4" />
                 <p className="text-muted-foreground">Join our community</p>
@@ -185,7 +185,7 @@ export default function HomePage() {
 
       {/* Services */}
       <section className="py-12 md:py-16 bg-card/30 border-y border-border/50">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="text-center mb-12">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Our Services</p>
             <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">
@@ -205,7 +205,7 @@ export default function HomePage() {
 
       {/* Courts */}
       <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Our Courts</p>
@@ -249,7 +249,7 @@ export default function HomePage() {
 
       {/* Membership */}
       <section id="membership" className="py-12 md:py-16 bg-card/30 border-y border-border/50">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="text-center mb-12">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Membership</p>
             <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">
@@ -297,7 +297,7 @@ export default function HomePage() {
 
       {/* Events */}
       <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="text-center mb-12">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Events</p>
             <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">
@@ -330,7 +330,7 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="py-12 md:py-16 bg-primary text-primary-foreground">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10 text-center">
+        <div className="mx-auto max-w-7xl px-6 md:px-10 text-center">
           <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight mb-4">
             Ready to Serve, Smash, and Score?
           </h2>
@@ -348,7 +348,7 @@ export default function HomePage() {
 
       {/* Contact */}
       <section className="py-12 md:py-16 border-t border-border/50">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="flex flex-col md:flex-row gap-8 md:items-center md:justify-between">
             {[
               { icon: Mail, label: "Email us", value: "hello@padelgo.id" },
